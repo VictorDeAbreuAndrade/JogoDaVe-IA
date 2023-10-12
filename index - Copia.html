@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="quality_table.js"></script>
+
+    <title>Jogo Da Vé-IA</title>
+
+    <style>
+        * {
+            margin: 1vh;
+        }
+
+        /* canvas {
+            border: 1px solid black;
+        } */
+
+        label, span {
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        input {
+            min-width: 70vw;
+        }
+
+        button {
+            min-width: 70vw;
+            padding: 1vh;
+            font-size: 3vh;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+        }
+
+    </style>
+</head>
+
+<body>
+    <canvas></canvas>
+    <div>
+        <label for="dificuldade"></label><span></span>
+    </div>
+    <div id="controls">
+        <input type="range" id="dificuldade" min="1" max="5" value="1" oninput="showValue()">
+    </div>
+    <button onclick="restart()">REINICIAR</button>
+
+    <script>
+
+        const canvasEl = document.querySelector('canvas'),
+              canvasCtx = canvasEl.getContext('2d'),
+              gapX = 10,
+              dificuldade = document.getElementById('dificuldade')
+        var tamanhoField = Number(),
+            dificuldadeEscolhida = document.querySelector('label'),
+            informaVencedor = document.querySelector('span'),
+            haGameOver = false,
+            quemVenceu = String(),
+            aleatoriedadeIA = 1,
+            casaEscolhida = Number(),
+            xisDesenhados = [],
+            bolasDesenhadas = [],
+            mapeamentoCasasPreenchidas = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        
+        tamanhoField = obterTamamnhoField()
+        
+        dificuldadeEscolhida.innerText = 'Dificuldade: ' + dificuldade.value
+
+        const field = {
+            w: tamanhoField,
+            h: tamanhoField,
+            draw: function() {
+                canvasCtx.fillStyle = '#eeeeee'
+                canvasCtx.fillRect(0, 0, this.h, this.h)
+            }
+        }
+
+        const inicioField = window.innerHeight/31 + 1,
+              fimField = inicioField + field.w - 2
+
+        const dimensions = {
+            inicioC1: [inicioField, inicioField],
+            fimC1: [inicioField + field.h/3 - field.h/200, inicioField + field.h/3 - field.h/200],
+            inicioC2: [inicioField + field.h/3 + field.h/200, inicioField],
+            fimC2: [inicioField + field.h*2/3 - field.h/200, inicioField + field.h/3 - field.h/200],
+            inicioC3: [inicioField + field.h*2/3 + field.h/200, inicioField],
+            fimC3: [fimField, inicioField + field.h/3 - field.h/200],
+            inicioC4: [inicioField, inicioField + field.h/3 + field.h/200],
+            fimC4: [field.h/3 - field.h/200, field.h*2/3 - field.h/200],
+            inicioC5: [inicioField + field.h/3 + field.h/200, inicioField + field.h/3 + field.h/200],
+            fimC5: [field.h*2/3 - field.h/200, field.h*2/3 - field.h/200],
+            inicioC6: [inicioField + field.h*2/3 + field.h/200, inicioField + field.h/3 + field.h/200],
+            fimC6: [fimField, field.h*2/3 - field.h/200],
+            inicioC7: [inicioField, inicioField + field.h*2/3 + field.h/200],
+            fimC7: [field.h/3 - field.h/200, fimField],
+            inicioC8: [inicioField + field.h/3 + field.h/200, inicioField + field.h*2/3 + field.h/200],
+            fimC8: [inicioField + field.h*2/3 - field.h/200, fimField],
+            inicioC9: [inicioField + field.h*2/3 + field.h/200, inicioField + field.h*2/3 + field.h/200],
+            fimC9: [fimField, fimField]
+        }
+
+        const lineV1 = {
+            w: field.w,
+            h: field.h,
+            draw: function () {
+                canvasCtx.fillStyle = '#666666'
+                canvasCtx.fillRect(field.h/3, 0, field.h/100, field.h)
+            }
+
+        }
+
+        const lineV2 = {
+            w: field.w,
+            h: field.h,
+            draw: function () {
+                canvasCtx.fillStyle = '#666666'
+                canvasCtx.fillRect(field.h*2/3, 0, field.h/100, field.h)
+            }
+
+        }
+
+        const lineH1 = {
+            w: field.w,
+            h: field.h,
+            draw: function () {
+                canvasCtx.fillStyle = '#666666'
+                canvasCtx.fillRect(0, field.h/3, field.h, field.h/100)
+            }
+
+        }
+
+        const lineH2 = {
+            w: field.w,
+            h: field.h,
+            draw: function () {
+                canvasCtx.fillStyle = '#666666'
+                canvasCtx.fillRect(0, field.h*2/3, field.h, field.h/100)
+            }
+
+        }
+
+        const bola = {
+            centro: field.h/6,
+            draw: function (posicaoEixoX, posicaoEixoY) {
+                canvasCtx.beginPath()
+                canvasCtx.strokeStyle = '#770000'
+                canvasCtx.lineWidth = field.h/50
+                canvasCtx.arc(this.centro*posicaoEixoX, this.centro*posicaoEixoY, field.h/10, 0, Math.PI*2)
+                canvasCtx.stroke()
+            }
+        }
+
+        const xis = {
+            centro: field.h/6,
+            draw: function (posicaoEixoX, posicaoEixoY) {
+                canvasCtx.beginPath()
+                canvasCtx.strokeStyle = '#007700'
+                canvasCtx.lineWidth = field.h/50
+                canvasCtx.moveTo(posicaoEixoX*this.centro - this.centro/2, posicaoEixoY*this.centro - this.centro/2)
+                canvasCtx.lineTo(posicaoEixoX*this.centro + this.centro/2, posicaoEixoY*this.centro + this.centro/2)
+                canvasCtx.stroke()
+                canvasCtx.beginPath()
+                canvasCtx.moveTo(posicaoEixoX*this.centro + this.centro/2, posicaoEixoY*this.centro - this.centro/2)
+                canvasCtx.lineTo(posicaoEixoX*this.centro - this.centro/2, posicaoEixoY*this.centro + this.centro/2)
+                canvasCtx.stroke()
+            }
+        }
+
+        // Traça uma linha semi-transparente quando um vencedor é identificado
+        const marcaVencedor = {
+            centro: field.h/6,
+            draw: function(coordenadasVencedor) {
+                let coordenadasInicio,
+                    coordenadasFinal
+                if(coordenadasVencedor[0] == 1) {coordenadasInicio = [this.centro, this.centro]}
+                else if (coordenadasVencedor[0] == 2) {coordenadasInicio = [this.centro*3, this.centro]}
+                else if (coordenadasVencedor[0] == 3) {coordenadasInicio = [this.centro*5, this.centro]}
+                else if (coordenadasVencedor[0] == 4) {coordenadasInicio = [this.centro, this.centro*3]}
+                else if (coordenadasVencedor[0] == 7) {coordenadasInicio = [this.centro, this.centro*5]}
+                
+                if (coordenadasVencedor[2] == 3) {coordenadasFinal = [this.centro*5., this.centro]}
+                else if (coordenadasVencedor[2] == 6) {coordenadasFinal = [this.centro*5, this.centro*3]}
+                else if (coordenadasVencedor[2] == 7) {coordenadasFinal = [this.centro, this.centro*5]}
+                else if (coordenadasVencedor[2] == 8) {coordenadasFinal = [this.centro*3, this.centro*5]}
+                else if (coordenadasVencedor[2] == 9) {coordenadasFinal = [this.centro*5, this.centro*5]}
+                canvasCtx.beginPath()
+                canvasCtx.strokeStyle = '#0000ff'
+                canvasCtx.lineCap = 'round'
+                canvasCtx.globalAlpha = 0.2
+                canvasCtx.lineWidth = field.h/4
+                canvasCtx.moveTo(coordenadasInicio[0], coordenadasInicio[1])
+                canvasCtx.lineTo(coordenadasFinal[0], coordenadasFinal[1])
+                canvasCtx.stroke()
+                canvasCtx.globalAlpha = 1
+                canvasCtx.lineCap = 'butt'
+            }
+        }
+
+        function restart() {
+            // document.location.reload()
+            xisDesenhados = []
+            bolasDesenhadas = []
+            mapeamentoCasasPreenchidas = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+            informaVencedor.innerText = ''
+            haGameOver = false,
+            quemVenceu = String()
+        }
+
+        function verificaVencedor() {
+
+            const haVencedor = [
+                [1, 2, 3],
+                [4, 5, 6],
+                [7, 8, 9],
+                [1, 4, 7],
+                [2, 5, 8],
+                [3, 6, 9],
+                [1, 5, 9],
+                [3, 5, 7]
+            ]
+
+            for (let i = 0 ; i < haVencedor.length ; i++) {
+                if (xisDesenhados.includes(haVencedor[i][0]) && xisDesenhados.includes(haVencedor[i][1]) && xisDesenhados.includes(haVencedor[i][2])) {
+                    return ['xis venceu', haVencedor[i]]
+                } else if (bolasDesenhadas.includes(haVencedor[i][0]) && bolasDesenhadas.includes(haVencedor[i][1]) && bolasDesenhadas.includes(haVencedor[i][2])) {
+                    return ['bola venceu', haVencedor[i]]
+                }
+            }
+
+            return ['sem vencedor']
+        }
+
+        function showValue() {
+            dificuldadeEscolhida.innerText = 'Dificuldade: ' + dificuldade.value
+        }
+
+        function gameOver(quemVenceu) {
+            
+            if (quemVenceu == 'xis venceu') {
+                informaVencedor.innerText = '| Parabéns, você venceu!'
+                return true
+            } else if (quemVenceu == 'bola venceu') {
+                informaVencedor.innerText = '| Você perdeu, tente novamente!'
+                return true
+            }
+            if (!mapeamentoCasasPreenchidas.includes(0)) {
+                informaVencedor.innerText = '| Ninguém ganhou ou perdeu! =)'
+            }
+
+        }
+
+        function localizaCoordenada(ponto) {
+            canvasCtx.beginPath()
+            canvasCtx.lineWidth = 5
+            canvasCtx.lineCap = 'round'
+            canvasCtx.strokeStyle = 'red'
+            canvasCtx.moveTo(ponto, ponto)
+            canvasCtx.lineTo(ponto, ponto)
+            canvasCtx.stroke()
+        }
+
+        function mudaDificuldade() {
+            switch (dificuldade.value) {
+                case '1':
+                    aleatoriedadeIA = 1;
+                    break;
+                case '2':
+                    aleatoriedadeIA = 0.75;
+                    break;
+                case '3':
+                    aleatoriedadeIA = 0.5;
+                    break;
+                case '4':
+                    aleatoriedadeIA = 0.25;
+                    break;
+                case '5':
+                    aleatoriedadeIA = 0;
+                    break;
+            }
+            console.log(aleatoriedadeIA)
+
+        }
+
+        function obterMelhorJogada() {
+            qVal = quality_table[String(mapeamentoCasasPreenchidas)]
+            valorMaximo = Math.max(...qVal)
+            return qVal.indexOf(valorMaximo)
+        }
+
+
+        function obterTamamnhoField() {
+            if (window.innerHeight > window.innerWidth) {
+                return window.innerWidth*0.7
+            } else {
+                return window.innerHeight*0.7
+            }
+        }
+
+
+        function setup() {
+            canvasEl.width = canvasCtx.width = field.w
+            canvasEl.height = canvasCtx.height = field.h
+        }
+
+
+        function draw() {
+            field.draw()
+            lineV1.draw()
+            lineV2.draw()
+            lineH1.draw()
+            lineH2.draw()
+            
+            // Função de teste para encontrar um par de coordenadas X,Y no field
+            // localizaCoordenada(50)
+
+            quemVenceu = verificaVencedor()
+    
+            if (quemVenceu[0] != 'sem vencedor') {
+                marcaVencedor.draw(quemVenceu[1])
+                haGameOver = true
+                gameOver(quemVenceu[0])
+            }
+            
+            for (let i=0; i < xisDesenhados.length; i++) {
+                if (xisDesenhados[i] == 1) {
+                    xis.draw(1, 1)
+                } else if (xisDesenhados[i] == 2) {
+                    xis.draw(3, 1)
+                } else if (xisDesenhados[i] == 3) {
+                    xis.draw(5, 1)
+                } else if (xisDesenhados[i] == 4) {
+                    xis.draw(1, 3)
+                } else if (xisDesenhados[i] == 5) {
+                    xis.draw(3, 3)
+                } else if (xisDesenhados[i] == 6) {
+                    xis.draw(5, 3)
+                } else if (xisDesenhados[i] == 7) {
+                    xis.draw(1, 5)
+                } else if (xisDesenhados[i] == 8) {
+                    xis.draw(3, 5)
+                } else if (xisDesenhados[i] == 9) {
+                    xis.draw(5, 5)
+                }
+            }
+
+            for (let i=0; i < bolasDesenhadas.length; i++) {
+                
+                if (bolasDesenhadas[i] == 1) {
+                    bola.draw(1, 1)
+                } else if (bolasDesenhadas[i] == 2) {
+                    bola.draw(3, 1)
+                } else if (bolasDesenhadas[i] == 3) {
+                    bola.draw(5, 1)
+                } else if (bolasDesenhadas[i] == 4) {
+                    bola.draw(1, 3)
+                } else if (bolasDesenhadas[i] == 5) {
+                    bola.draw(3, 3)
+                } else if (bolasDesenhadas[i] == 6) {
+                    bola.draw(5, 3)
+                } else if (bolasDesenhadas[i] == 7) {
+                    bola.draw(1, 5)
+                } else if (bolasDesenhadas[i] == 8) {
+                    bola.draw(3, 5)
+                } else if (bolasDesenhadas[i] == 9) {
+                    bola.draw(5, 5)
+                }
+            }
+
+
+        }
+
+        window.animateFrame = (function () {
+            return (
+                window.requestAnimationFrame ||
+                window.webkitRequestAnimationFrame ||
+                window.mozRequestAnimarionFrame ||
+                window.oRequestAnimationFrame ||
+                window.msRequestAnimationFrame ||
+                function (callback) {
+                    return window.setTimeout(callback, 1000/60)
+                }
+            )
+        })()
+
+        function main() {
+            animateFrame(main)
+            draw()
+            verificaVencedor()
+        }
+
+        setup()
+        main()
+        
+        function clickCoordinates (event) {
+
+            if (event.clientX >= dimensions.inicioC1[0] && event.clientX <= dimensions.fimC1[0] && event.clientY >= dimensions.inicioC1[1] && event.clientY <= dimensions.fimC1[1] && xisDesenhados.indexOf(1) == -1 && bolasDesenhadas.indexOf(1) == -1 && informaVencedor.innerText == '') {
+                xisDesenhados.push(1)
+                mapeamentoCasasPreenchidas[9] = 1
+            } else if (event.clientX >= dimensions.inicioC2[0] && event.clientX <= dimensions.fimC2[0] && event.clientY >= dimensions.inicioC2[1] && event.clientY <= dimensions.fimC2[1] && xisDesenhados.indexOf(2) == -1 && bolasDesenhadas.indexOf(2) == -1 && informaVencedor.innerText == '') {
+                xisDesenhados.push(2)
+                mapeamentoCasasPreenchidas[10] = 1
+            } else if (event.clientX >= dimensions.inicioC3[0] && event.clientX <= dimensions.fimC3[0] && event.clientY >= dimensions.inicioC3[1] && event.clientY <= dimensions.fimC3[1] && xisDesenhados.indexOf(3) == -1 && bolasDesenhadas.indexOf(3) == -1 && informaVencedor.innerText == '') {
+                xisDesenhados.push(3)
+                mapeamentoCasasPreenchidas[11] = 1
+            } else if (event.clientX >= dimensions.inicioC4[0] && event.clientX <= dimensions.fimC4[0] && event.clientY >= dimensions.inicioC4[1] && event.clientY <= dimensions.fimC4[1] && xisDesenhados.indexOf(4) == -1 && bolasDesenhadas.indexOf(4) == -1 && informaVencedor.innerText == '') {
+                xisDesenhados.push(4)
+                mapeamentoCasasPreenchidas[12] = 1
+            } else if (event.clientX >= dimensions.inicioC5[0] && event.clientX <= dimensions.fimC5[0] && event.clientY >= dimensions.inicioC5[1] && event.clientY <= dimensions.fimC5[1] && xisDesenhados.indexOf(5) == -1 && bolasDesenhadas.indexOf(5) == -1 && informaVencedor.innerText == '') {
+                xisDesenhados.push(5)
+                mapeamentoCasasPreenchidas[13] = 1
+            } else if (event.clientX >= dimensions.inicioC6[0] && event.clientX <= dimensions.fimC6[0] && event.clientY >= dimensions.inicioC6[1] && event.clientY <= dimensions.fimC6[1] && xisDesenhados.indexOf(6) == -1 && bolasDesenhadas.indexOf(6) == -1 && informaVencedor.innerText == '') {
+                xisDesenhados.push(6)
+                mapeamentoCasasPreenchidas[14] = 1
+            } else if (event.clientX >= dimensions.inicioC7[0] && event.clientX <= dimensions.fimC7[0] && event.clientY >= dimensions.inicioC7[1] && event.clientY <= dimensions.fimC7[1] && xisDesenhados.indexOf(7) == -1 && bolasDesenhadas.indexOf(7) == -1 && informaVencedor.innerText == '') {
+                xisDesenhados.push(7)
+                mapeamentoCasasPreenchidas[15] = 1
+            } else if (event.clientX >= dimensions.inicioC8[0] && event.clientX <= dimensions.fimC8[0] && event.clientY >= dimensions.inicioC8[1] && event.clientY <= dimensions.fimC8[1] && xisDesenhados.indexOf(8) == -1 && bolasDesenhadas.indexOf(8) == -1 && informaVencedor.innerText == '') {
+                xisDesenhados.push(8)
+                mapeamentoCasasPreenchidas[16] = 1
+            } else if (event.clientX >= dimensions.inicioC9[0] && event.clientX <= dimensions.fimC9[0] && event.clientY >= dimensions.inicioC9[1] && event.clientY <= dimensions.fimC9[1] && xisDesenhados.indexOf(9) == -1 && bolasDesenhadas.indexOf(9) == -1 && informaVencedor.innerText == '') {
+                xisDesenhados.push(9)
+                mapeamentoCasasPreenchidas[17] = 1
+            } else {
+                // Evita que uma "O" seja marcada quando não há nova jogada de "X" (pode acontecer se o usuário clicar em cima de uma das linhas, pois nesse caso não houve clique em nenhum dos 9 campos)
+                return null
+            }            
+            
+            var camposJaMarcados = [...xisDesenhados, ...bolasDesenhadas]            
+            
+
+            quemVenceu = verificaVencedor()
+
+            if (event.clientX >= dimensions.inicioC1[0] && event.clientX <= dimensions.fimC9[0] && event.clientY >= dimensions.inicioC1[1] && event.clientY <= dimensions.fimC9[1] && camposJaMarcados.length < 9 && quemVenceu[0] != 'xis venceu') {
+                
+                if (Math.random() > aleatoriedadeIA) {
+                    
+                    do {
+                        casaEscolhida = obterMelhorJogada() + 1
+                        console.log('Jogada consciente')
+                    } while (camposJaMarcados.includes(casaEscolhida))
+                    
+                } else {
+                    do {
+                        casaEscolhida = Math.floor(Math.random()*9) + 1
+                        console.log('Jogada aleatória')
+                    } while (camposJaMarcados.includes(casaEscolhida))
+                }
+
+                bolasDesenhadas.push(casaEscolhida)
+                mapeamentoCasasPreenchidas[casaEscolhida - 1] = 1
+                
+            }
+
+            if (camposJaMarcados.length == 9 && quemVenceu == 'sem vencedor') {
+                informaVencedor.innerText = '| Ninguém ganhou ou perdeu! =)'
+            }
+
+        }
+
+        document.addEventListener('click', clickCoordinates)
+        document.addEventListener('change', mudaDificuldade)
+
+    </script>
+</body>
+</html>
