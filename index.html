@@ -13,9 +13,9 @@
             margin: 1vh;
         }
 
-        canvas {
+        /* canvas {
             border: 1px solid black;
-        }
+        } */
 
         label, span {
             font-family: 'Courier New', Courier, monospace;
@@ -52,22 +52,24 @@
               canvasCtx = canvasEl.getContext('2d'),
               gapX = 10,
               dificuldade = document.getElementById('dificuldade')
-        var dificuldadeEscolhida = document.querySelector('label'),
+        var tamanhoField = Number(),
+            dificuldadeEscolhida = document.querySelector('label'),
             informaVencedor = document.querySelector('span'),
             haGameOver = false,
+            quemVenceu = String(),
             aleatoriedadeIA = 1,
-            quemVenceu = String()
-            casaEscolhida = Number()
+            casaEscolhida = Number(),
             xisDesenhados = [],
             bolasDesenhadas = [],
             mapeamentoCasasPreenchidas = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         
+        tamanhoField = obterTamamnhoField()
         
         dificuldadeEscolhida.innerText = 'Dificuldade: ' + dificuldade.value
 
         const field = {
-            w: window.innerWidth*0.7,
-            h: window.innerWidth*0.7,
+            w: tamanhoField,
+            h: tamanhoField,
             draw: function() {
                 canvasCtx.fillStyle = '#eeeeee'
                 canvasCtx.fillRect(0, 0, this.h, this.h)
@@ -196,7 +198,13 @@
         }
 
         function restart() {
-            document.location.reload()
+            // document.location.reload()
+            xisDesenhados = []
+            bolasDesenhadas = []
+            mapeamentoCasasPreenchidas = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+            informaVencedor.innerText = ''
+            haGameOver = false,
+            quemVenceu = String()
         }
 
         function verificaVencedor() {
@@ -280,10 +288,21 @@
             return qVal.indexOf(valorMaximo)
         }
 
+
+        function obterTamamnhoField() {
+            if (window.innerHeight > window.innerWidth) {
+                return window.innerWidth*0.7
+            } else {
+                return window.innerHeight*0.7
+            }
+        }
+
+
         function setup() {
             canvasEl.width = canvasCtx.width = field.w
             canvasEl.height = canvasCtx.height = field.h
         }
+
 
         function draw() {
             field.draw()
